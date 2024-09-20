@@ -44,6 +44,12 @@ class GSplat {
     /** @type {Texture} */
     transformCTexture;
 
+    /** @type {Texture} */
+    hierarchyTexture;
+
+    /** @type {Texture} */
+    bboxTexture;
+
     /**
      * @param {import('../../platform/graphics/graphics-device.js').GraphicsDevice} device - The graphics device.
      * @param {import('./gsplat-data.js').GSplatData} gsplatData - The splat data.
@@ -65,10 +71,13 @@ class GSplat {
         this.transformATexture = this.createTexture('transformA', PIXELFORMAT_RGBA32F, size);
         this.transformBTexture = this.createTexture('transformB', PIXELFORMAT_RGBA16F, size);
         this.transformCTexture = this.createTexture('transformC', PIXELFORMAT_R16F, size);
+        this.hierarchyTexture = this.createTexture('hier_params', PIXELFORMAT_RGBA16F, size);
+        this.bboxTexture = this.createTexture('bbox_params', PIXELFORMAT_RGBA16F, size);
 
         // write texture data
         this.updateColorData(gsplatData);
         this.updateTransformData(gsplatData);
+        this.updateHierarchyData(gsplatData);
     }
 
     destroy() {
@@ -76,6 +85,8 @@ class GSplat {
         this.transformATexture?.destroy();
         this.transformBTexture?.destroy();
         this.transformCTexture?.destroy();
+        this.hierarchyTexture?.destroy();
+        this.bboxTexture?.destroy();
     }
 
     /**
@@ -88,6 +99,8 @@ class GSplat {
         result.setParameter('transformA', this.transformATexture);
         result.setParameter('transformB', this.transformBTexture);
         result.setParameter('transformC', this.transformCTexture);
+        result.setParameter('hier_params', this.hierarchyTexture);
+        result.setParameter('bbox_params', this.bboxTexture);
         result.setParameter('tex_params', new Float32Array([this.numSplats, this.colorTexture.width, 0, 0]));
         return result;
     }
@@ -240,6 +253,42 @@ class GSplat {
         this.transformATexture.unlock();
         this.transformBTexture.unlock();
         this.transformCTexture.unlock();
+    }
+
+    /**
+     * @param {import('./gsplat-data.js').GSplatData} gsplatData - The source data
+     */
+    updateHierarchyData(gsplatData) {
+
+        const float2Half = FloatPacking.float2Half;
+
+        if (!this.hierarchyTexture)
+            return;
+
+        const dataH = this.hierarchyTexture.lock();
+        const dataB = this.bboxTexture.lock();
+
+        const h = new Vec4();
+        const b = new Vec4();
+        const iter = gsplatData.createIter(null, null, null, null, h, b);
+
+        for (let i = 0; i < this.numSplats; i++) {
+            iter.read(i);
+
+            dataH[i * 4 + 0] = float2Half(h.x);
+            dataH[i * 4 + 1] = float2Half(h.y);
+            dataH[i * 4 + 2] = float2Half(h.z);
+            dataH[i * 4 + 3] = float2Half(h.w);
+
+            dataB[i * 4 + 0] = float2Half(b.x);
+            dataB[i * 4 + 1] = float2Half(b.y);
+            dataB[i * 4 + 2] = float2Half(b.z);
+            dataB[i * 4 + 3] = float2Half(b.w);
+
+        }
+
+        this.hierarchyTexture.unlock();
+        this.bboxTexture.unlock();
     }
 
     /**

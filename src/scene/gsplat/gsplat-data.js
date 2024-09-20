@@ -2,6 +2,7 @@ import { Color } from '../../core/math/color.js';
 import { Mat4 } from '../../core/math/mat4.js';
 import { Quat } from '../../core/math/quat.js';
 import { Vec3 } from '../../core/math/vec3.js';
+import { Vec4 } from '../../core/math/vec4.js';
 import { BoundingBox } from '../../core/shape/bounding-box.js';
 
 const vec3 = new Vec3();
@@ -16,7 +17,7 @@ const SH_C0 = 0.28209479177387814;
 
 // iterator for accessing uncompressed splat data
 class SplatIterator {
-    constructor(gsplatData, p, r, s, c) {
+    constructor(gsplatData, p, r, s, c, h, b) {
         const x = gsplatData.getProp('x');
         const y = gsplatData.getProp('y');
         const z = gsplatData.getProp('z');
@@ -34,6 +35,16 @@ class SplatIterator {
         const cg = gsplatData.getProp('f_dc_1');
         const cb = gsplatData.getProp('f_dc_2');
         const ca = gsplatData.getProp('opacity');
+
+        const hx = gsplatData.getProp('hier_0');
+        const hy = gsplatData.getProp('hier_1');
+        const hz = gsplatData.getProp('hier_2');
+        const hw = gsplatData.getProp('hier_3');
+
+        const bx = gsplatData.getProp('bbox_0');
+        const by = gsplatData.getProp('bbox_1');
+        const bz = gsplatData.getProp('bbox_2');
+        const bw = gsplatData.getProp('bbox_3');
 
         /**
          * Calculates the sigmoid of a given value.
@@ -72,6 +83,14 @@ class SplatIterator {
                     0.5 + cb[i] * SH_C0,
                     sigmoid(ca[i])
                 );
+            }
+
+            if (h && hx) {
+                h.set(hx[i], hy[i], hz[i], hw[i]);
+            }
+
+            if (b && bx) {
+                b.set(bx[i], by[i], bz[i], bw[i]);
             }
         };
     }
@@ -177,11 +196,13 @@ class GSplatData {
      * @param {Vec3|null} [p] - the vector to receive splat position
      * @param {Quat|null} [r] - the quaternion to receive splat rotation
      * @param {Vec3|null} [s] - the vector to receive splat scale
-     * @param {import('../../core/math/vec4.js').Vec4|null} [c] - the vector to receive splat color
+     * @param {Vec4|null} [c] - the vector to receive splat color
+     * @param {Vec4|null} [h] - the vector to receive splat hierarchy
+     * @param {Vec4|null} [b] - the vector to receive splat bbox
      * @returns {SplatIterator} - The iterator
      */
-    createIter(p, r, s, c) {
-        return new SplatIterator(this, p, r, s, c);
+    createIter(p, r, s, c, h, b) {
+        return new SplatIterator(this, p, r, s, c, h, b);
     }
 
     /**

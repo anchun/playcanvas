@@ -460,6 +460,8 @@ const defaultElements = [
     'f_dc_0', 'f_dc_1', 'f_dc_2', 'opacity',
     'rot_0', 'rot_1', 'rot_2', 'rot_3',
     'scale_0', 'scale_1', 'scale_2',
+    'hier_0', 'hier_1', 'hier_2', 'hier_3',
+    'bbox_0', 'bbox_1', 'bbox_2', 'bbox_3',
     // compressed format elements
     'min_x', 'min_y', 'min_z',
     'max_x', 'max_y', 'max_z',

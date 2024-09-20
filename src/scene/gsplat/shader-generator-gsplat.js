@@ -19,6 +19,8 @@ const splatCoreVS = /* glsl */ `
     uniform highp sampler2D transformB;
     uniform highp sampler2D transformC;
     uniform sampler2D splatColor;
+    uniform highp sampler2D hier_params;
+    uniform highp sampler2D bbox_params;
 
     attribute vec3 vertex_position;
     attribute uint vertex_id_attrib;
@@ -37,6 +39,8 @@ const splatCoreVS = /* glsl */ `
     vec3 center;
     vec3 covA;
     vec3 covB;
+    uint count_leafs = uint(0);
+    vec4 bbox;
 
     // calculate the current splat index and uv
     bool calcSplatUV() {
@@ -74,6 +78,10 @@ const splatCoreVS = /* glsl */ `
         center = tA.xyz;
         covA = tB.xyz;
         covB = vec3(tA.w, tB.w, tC.x);
+
+        vec4 hier = texelFetch(hier_params, splatUV, 0);
+        count_leafs = uint(round(hier[2]));
+        bbox = texelFetch(bbox_params, splatUV, 0);
     }
 
     vec4 getColor() {
@@ -91,6 +99,10 @@ const splatCoreVS = /* glsl */ `
         if (splat_proj.z < -splat_proj.w) {
             return false;
         }
+        
+        // only show leafs
+        if (count_leafs <= 0u)
+            return false;
 
         mat3 Vrk = mat3(
             covA.x, covA.y, covA.z, 
