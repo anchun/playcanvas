@@ -37,9 +37,12 @@ const splatCoreVS = /* glsl */ `
     ivec2 splatUV;
 
     vec3 center;
+    vec3 parent;
     vec3 covA;
     vec3 covB;
     uint count_leafs = uint(0);
+    int parent_id = -1;
+    float TARGET_SIZE = 0.02;
     vec4 bbox;
 
     // calculate the current splat index and uv
@@ -77,10 +80,12 @@ const splatCoreVS = /* glsl */ `
 
         center = tA.xyz;
         covA = tB.xyz;
-        covB = vec3(tA.w, tB.w, tC.x);
+        covB = vec3(tA.w, tB.w, tC.w);
+        parent = tC.xyz;
 
         vec4 hier = texelFetch(hier_params, splatUV, 0);
-        count_leafs = uint(round(hier[2]));
+        count_leafs = uint(round(hier.z));
+        parent_id = int(round(hier.y));
         bbox = texelFetch(bbox_params, splatUV, 0);
     }
 
@@ -99,10 +104,19 @@ const splatCoreVS = /* glsl */ `
         if (splat_proj.z < -splat_proj.w) {
             return false;
         }
-        
-        // only show leafs
-        if (count_leafs <= 0u)
-            return false;
+
+        float node_size = bbox.y / length(splat_cam.xyz);
+        if(node_size >= TARGET_SIZE) {
+            if (count_leafs <= 0u)
+                return false;
+        }
+        else if(parent_id > 0) {
+            vec4 splat_parent = matrix_view * matrix_model * vec4(parent, 1.0);
+            float parent_size = bbox.w / length(splat_parent);
+            if(parent_size <= TARGET_SIZE){
+                return false;
+            }
+        }
 
         mat3 Vrk = mat3(
             covA.x, covA.y, covA.z, 
