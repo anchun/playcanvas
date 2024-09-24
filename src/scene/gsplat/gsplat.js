@@ -276,8 +276,9 @@ class GSplat {
 
         const float2Half = FloatPacking.float2Half;
 
-        if (!this.hierarchyTexture)
+        if (!this.hierarchyTexture) {
             return;
+        }
 
         const dataH = this.hierarchyTexture.lock();
         const dataB = this.bboxTexture.lock();

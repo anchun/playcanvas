@@ -42,7 +42,8 @@ const splatCoreVS = /* glsl */ `
     vec3 covB;
     uint count_leafs = uint(0);
     int parent_id = -1;
-    float TARGET_SIZE = 0.02;
+    float BIG_LIMIT = 32.0;
+    float TARGET_SIZE = 0.01;
     vec4 bbox;
 
     // calculate the current splat index and uv
@@ -105,8 +106,12 @@ const splatCoreVS = /* glsl */ `
             return false;
         }
 
-        float node_size = bbox.y / length(splat_cam.xyz);
-        if(node_size >= TARGET_SIZE) {
+        float max_scale = (bbox.y - bbox.x) / 6.0;
+        if(max_scale > BIG_LIMIT) {
+            return false;
+        }
+        float view_size = bbox.y / length(splat_cam.xyz);
+        if(view_size >= TARGET_SIZE) {
             if (count_leafs <= 0u)
                 return false;
         }
