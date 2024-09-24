@@ -69,10 +69,10 @@ class GSplat {
         const size = this.evalTextureSize(numSplats);
         this.colorTexture = this.createTexture('splatColor', PIXELFORMAT_RGBA8, size);
         this.transformATexture = this.createTexture('transformA', PIXELFORMAT_RGBA32F, size);
-        this.transformBTexture = this.createTexture('transformB', PIXELFORMAT_RGBA16F, size);
+        this.transformBTexture = this.createTexture('transformB', PIXELFORMAT_RGBA32F, size);
         this.transformCTexture = this.createTexture('transformC', PIXELFORMAT_RGBA32F, size);
         this.hierarchyTexture = this.createTexture('hier_params', PIXELFORMAT_RGBA16F, size);
-        this.bboxTexture = this.createTexture('bbox_params', PIXELFORMAT_RGBA16F, size);
+        this.bboxTexture = this.createTexture('bbox_params', PIXELFORMAT_RGBA32F, size);
 
         // write texture data
         this.updateColorData(gsplatData);
@@ -211,10 +211,9 @@ class GSplat {
      */
     updateTransformData(gsplatData) {
 
-        const float2Half = FloatPacking.float2Half;
-
-        if (!this.transformATexture)
+        if (!this.transformATexture) {
             return;
+        }
 
         const dataA = this.transformATexture.lock();
         const dataB = this.transformBTexture.lock();
@@ -245,10 +244,10 @@ class GSplat {
             dataA[i * 4 + 2] = p.z;
             dataA[i * 4 + 3] = cB.x;
 
-            dataB[i * 4 + 0] = float2Half(cA.x);
-            dataB[i * 4 + 1] = float2Half(cA.y);
-            dataB[i * 4 + 2] = float2Half(cA.z);
-            dataB[i * 4 + 3] = float2Half(cB.y);
+            dataB[i * 4 + 0] = cA.x;
+            dataB[i * 4 + 1] = cA.y;
+            dataB[i * 4 + 2] = cA.z;
+            dataB[i * 4 + 3] = cB.y;
 
             const parentId = Math.round(h.y);
             if (parentId > 0) {
@@ -291,14 +290,14 @@ class GSplat {
             iter.read(i);
 
             dataH[i * 4 + 0] = float2Half(h.x);
-            dataH[i * 4 + 1] = float2Half(h.y > 0 ? 1 : -1); // 1 means with valid parent, and -1 without parent
+            dataH[i * 4 + 1] = float2Half(h.y >= 0 ? 1 : -1); // 1 means with valid parent, and -1 without parent
             dataH[i * 4 + 2] = float2Half(h.z);
             dataH[i * 4 + 3] = float2Half(h.w);
 
-            dataB[i * 4 + 0] = float2Half(b.x);
-            dataB[i * 4 + 1] = float2Half(b.y);
-            dataB[i * 4 + 2] = float2Half(b.z);
-            dataB[i * 4 + 3] = float2Half(b.w);
+            dataB[i * 4 + 0] = b.x;
+            dataB[i * 4 + 1] = b.y;
+            dataB[i * 4 + 2] = b.z;
+            dataB[i * 4 + 3] = b.w;
 
         }
 

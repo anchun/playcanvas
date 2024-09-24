@@ -117,7 +117,7 @@ const splatCoreVS = /* glsl */ `
         }
         else if(parent_id > 0) {
             vec4 splat_parent = matrix_view * matrix_model * vec4(parent, 1.0);
-            float parent_size = bbox.w / length(splat_parent);
+            float parent_size = bbox.w / length(splat_parent.xyz);
             if(parent_size <= TARGET_SIZE){
                 return false;
             }
