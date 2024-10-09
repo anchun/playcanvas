@@ -290,7 +290,7 @@ class GSplat {
             iter.read(i);
 
             dataH[i * 4 + 0] = float2Half(h.x);
-            dataH[i * 4 + 1] = float2Half(h.y >= 0 ? 1 : -1); // 1 means with valid parent, and -1 without parent
+            dataH[i * 4 + 1] = float2Half(h.y > 0 ? 1 : -1); // 1 means with valid parent, and -1 without parent
             dataH[i * 4 + 2] = float2Half(h.z);
             dataH[i * 4 + 3] = float2Half(h.w);
 
