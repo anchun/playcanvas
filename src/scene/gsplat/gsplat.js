@@ -2,6 +2,7 @@ import { FloatPacking } from '../../core/math/float-packing.js';
 import { Quat } from '../../core/math/quat.js';
 import { Vec2 } from '../../core/math/vec2.js';
 import { Vec3 } from '../../core/math/vec3.js';
+import { Vec4 } from '../../core/math/vec4.js';
 import { Mat3 } from '../../core/math/mat3.js';
 import {
     ADDRESS_CLAMP_TO_EDGE, FILTER_NEAREST, PIXELFORMAT_RGBA16F, PIXELFORMAT_RGBA32U,
@@ -55,6 +56,15 @@ class GSplat {
     /** @type {Texture | undefined} */
     sh12to15Texture;
 
+    /** @type {Texture} */
+    transformCTexture;
+
+    /** @type {Texture} */
+    hierarchyTexture;
+
+    /** @type {Texture} */
+    bboxTexture;
+
     /**
      * @param {import('../../platform/graphics/graphics-device.js').GraphicsDevice} device - The graphics device.
      * @param {import('./gsplat-data.js').GSplatData} gsplatData - The splat data.
@@ -75,6 +85,9 @@ class GSplat {
         this.colorTexture = this.createTexture('splatColor', PIXELFORMAT_RGBA8, size);
         this.transformATexture = this.createTexture('transformA', PIXELFORMAT_RGBA32U, size);
         this.transformBTexture = this.createTexture('transformB', PIXELFORMAT_RGBA16F, size);
+        this.transformCTexture = this.createTexture('transformC', PIXELFORMAT_RGBA32U, size);
+        this.hierarchyTexture = this.createTexture('hier_params', PIXELFORMAT_RGBA16F, size);
+        this.bboxTexture = this.createTexture('bbox_params', PIXELFORMAT_RGBA16F, size);
 
         // write texture data
         this.updateColorData(gsplatData);
@@ -90,6 +103,7 @@ class GSplat {
 
             this.updateSHData(gsplatData);
         }
+        this.updateHierarchyData(gsplatData);
     }
 
     destroy() {
@@ -100,6 +114,9 @@ class GSplat {
         this.sh4to7Texture?.destroy();
         this.sh8to11Texture?.destroy();
         this.sh12to15Texture?.destroy();
+        this.transformCTexture?.destroy();
+        this.hierarchyTexture?.destroy();
+        this.bboxTexture?.destroy();
     }
 
     /**
@@ -114,6 +131,9 @@ class GSplat {
         result.setParameter('splatColor', this.colorTexture);
         result.setParameter('transformA', this.transformATexture);
         result.setParameter('transformB', this.transformBTexture);
+        result.setParameter('transformC', this.transformCTexture);
+        result.setParameter('hier_params', this.hierarchyTexture);
+        result.setParameter('bbox_params', this.bboxTexture);
         result.setParameter('tex_params', new Float32Array([this.numSplats, this.colorTexture.width, 0, 0]));
         if (this.hasSH) {
             result.setParameter('splatSH_1to3', this.sh1to3Texture);
@@ -248,11 +268,16 @@ class GSplat {
         const dataA = this.transformATexture.lock();
         const dataAFloat32 = new Float32Array(dataA.buffer);
         const dataB = this.transformBTexture.lock();
+        const dataC = this.transformCTexture.lock();
+        const dataCFloat32 = new Float32Array(dataC.buffer);
 
         const p = new Vec3();
         const r = new Quat();
         const s = new Vec3();
-        const iter = gsplatData.createIter(p, r, s);
+        const h = new Vec4();
+        const iter = gsplatData.createIter(p, r, s, null, h);
+        const parent = new Vec3();
+        const iterP = gsplatData.createIter(parent);
 
         const mat = new Mat3();
         const cA = new Vec3();
@@ -275,10 +300,61 @@ class GSplat {
             dataB[i * 4 + 1] = float2Half(cA.y);
             dataB[i * 4 + 2] = float2Half(cA.z);
             dataB[i * 4 + 3] = float2Half(cB.z);
+
+            const parentId = Math.round(h.y);
+            if (parentId > 0) {
+                iterP.read(parentId);
+                dataCFloat32[i * 4 + 0] = parent.x;
+                dataCFloat32[i * 4 + 1] = parent.y;
+                dataCFloat32[i * 4 + 2] = parent.z;
+            } else {
+                dataCFloat32[i * 4 + 0] = 0;
+                dataCFloat32[i * 4 + 1] = 0;
+                dataCFloat32[i * 4 + 2] = 0;
+            }
+            dataC[i * 4 + 3] = 0;
         }
 
         this.transformATexture.unlock();
         this.transformBTexture.unlock();
+        this.transformCTexture.unlock();
+    }
+
+    /**
+     * @param {import('./gsplat-data.js').GSplatData} gsplatData - The source data
+     */
+    updateHierarchyData(gsplatData) {
+
+        const float2Half = FloatPacking.float2Half;
+
+        if (!this.hierarchyTexture) {
+            return;
+        }
+
+        const dataH = this.hierarchyTexture.lock();
+        const dataB = this.bboxTexture.lock();
+
+        const h = new Vec4();
+        const b = new Vec4();
+        const iter = gsplatData.createIter(null, null, null, null, h, b);
+
+        for (let i = 0; i < this.numSplats; i++) {
+            iter.read(i);
+
+            dataH[i * 4 + 0] = float2Half(h.x);
+            dataH[i * 4 + 1] = float2Half(h.y > 0 ? 1 : -1); // 1 means with valid parent, and -1 without parent
+            dataH[i * 4 + 2] = float2Half(h.z);
+            dataH[i * 4 + 3] = float2Half(h.w);
+
+            dataB[i * 4 + 0] = float2Half(b.x);
+            dataB[i * 4 + 1] = float2Half(b.y);
+            dataB[i * 4 + 2] = float2Half(b.z);
+            dataB[i * 4 + 3] = float2Half(b.w);
+
+        }
+
+        this.hierarchyTexture.unlock();
+        this.bboxTexture.unlock();
     }
 
     /**

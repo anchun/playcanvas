@@ -37,6 +37,14 @@ const splatMainVS = /* glsl */ `
             return;
         }
 
+        float BIG_LIMIT = 32.0;
+        float TARGET_SIZE = 0.01;
+        vec3 parent = getParentCenter();
+        vec4 splat_parent = model_view * vec4(parent, 1.0);
+        if(!isLODNodeVisible(splat_cam.xyz, splat_parent.xyz, BIG_LIMIT, TARGET_SIZE)) {
+            return;
+        }
+
         // get covariance
         vec3 covA, covB;
         getCovariance(covA, covB);

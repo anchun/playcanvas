@@ -17,6 +17,9 @@ const splatCoreVS = /* glsl */ `
     uniform highp usampler2D splatOrder;
     uniform highp usampler2D transformA;
     uniform highp sampler2D transformB;
+    uniform highp usampler2D transformC;
+    uniform highp sampler2D hier_params;
+    uniform highp sampler2D bbox_params;
 
     attribute vec3 vertex_position;
     attribute uint vertex_id_attrib;
@@ -61,6 +64,36 @@ const splatCoreVS = /* glsl */ `
     vec3 getCenter() {
         tA = texelFetch(transformA, splatUV, 0);
         return uintBitsToFloat(tA.xyz);
+    }
+
+    vec3 getParentCenter() {
+        uvec4 tC = texelFetch(transformC, splatUV, 0);
+        return uintBitsToFloat(tC.xyz);
+    }
+
+    bool isLODNodeVisible(in vec3 splat_cam, in vec3 splat_parent, float big_limit, float target_size){
+        vec4 bbox = texelFetch(bbox_params, splatUV, 0);
+        float max_scale = (bbox.y - bbox.x) / 6.0;
+        if(max_scale > big_limit) {
+            return false;
+        }
+        
+        vec4 hier = texelFetch(hier_params, splatUV, 0);
+        uint count_leafs = uint(round(hier.z));
+        int parent_id = int(round(hier.y));
+        
+        float view_size = bbox.y / length(splat_cam.xyz);
+        if(view_size >= target_size) {
+            if (count_leafs <= 0u)
+                return false;
+        }
+        else if(parent_id > 0) {
+            float parent_size = bbox.w / length(splat_parent.xyz);
+            if(parent_size <= target_size){
+                return false;
+            }
+        }
+        return true;
     }
 
     void getCovariance(out vec3 covA, out vec3 covB) {
